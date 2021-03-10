@@ -1,26 +1,64 @@
-es_un(hombre_adulto, persona).
-es_un(jugador_de_futbol, hombre_adulto).
-es_un(defensa, jugador_de_futbol).
-es_un(delantero, jugador_de_futbol).
+variable(en(robot, h2)).
+variable(en(caja1, h2)).
+variable(en(caja2, h2)).
+variable(pinza(vacia)).
 
-es_un(club, futbol).
-es_un(equipo, club).
+puerta(h1, h2).
 
-inst(adith, defensa).
-inst(miguel, delantero).
-inst(millonarios,equipo).
+%s0 es la situación inicial del robot
+s0(Situacion) :-
+    setof(S, variable(S), Situacion).
 
-prop(persona, pie_habil, derecho).
-prop(hombre_adulto, altura, 1.80).
-prop(jugador_de_futbol, patea, balon).
-prop(jugador_de_futbol, altura, 1.85).
-prop(jugador_de_futbol, numero_de_goles, 3).
-prop(delantero, numero_de_goles, 5).
-prop(defensa, numero_de_goles, 1).
-prop(adith, equipo, millonarios).
-prop(miguel, equipo, millonarios).
+% Tomar una lista de acciones y ejecutarlas
+ejecutar_acciones(S1, [], S1). %Nada que hacer
+ejecutar_acciones(S1, [Accion|Proceso], S2) :-
+    accion(Accion, S1), % Asegurar que es un proceso válido
+    resultado(S1, Accion, Sd),
+    ejecutar_acciones(Sd, Proceso, S2).
 
-prop(I, A, V):-inst(I, C), prop(C, A, V).
-prop(S, A, V):-es_un(S, C), prop(C, A, V).
-prop(I, A, V):-inst(I, S), es_un(S, C), prop(C, A, V).
+%¿Se cumple (es verdadera) una variable en la Situación?
+%Para consultar las situaciones
+puede(Variable, Situacion) :-
+    ground(Variable), ord_memberchk(Variable, Situacion), !.
+puede(Variable, Situacion) :-
+    member(Variable, Situacion).
+remplazar_variable(S1, OldEl, NewEl, S2) :-
+    ord_del_element(S1, OldEl, Sd),
+    ord_add_element(Sd, NewEl, S2).
+
+%Lista de acciones que puede hacer el robot
+accion(cojer(X), S) :-
+    dif(X, robot), %no puede agarrarse a si mismo
+    puede(en(X, L), S),
+    puede(en(robot, L), S),
+    puede(pinza(vacia), S).
+
+accion(ir_a(L), S) :-
+    puede(en(robot, X), S),
+    puede(puerta(h1, h2), S).
+
+accion(soltar(X), S) :-
+    dif(X, vacia),
+    puede(pinza(X), S).
+
+resultado(S1, cojer(X), S2) :-
+    %Robot tiene en la pinza X
+    remplazar_variable(S1, pinza(vacia), pinza(X), S2).
+
+resultado(S1, ir_a(L), S2) :-
+    %Robot se mueve
+    puede(en(robot, X), S1),
+    remplazar_variable(S1, en(robot, X), en(robot, L), Sa),
+    %Si lleva la caja en la pinza también se mueve
+    dif(Caja, vacia),
+    (   
+    	puede(pinza(Caja), S1),
+        remplazar_variable(Sa, en(Caja, X), en(Caja, L), S2)
+    ;   \+ puede(pinza(Caja), S1),
+        S2 = Sa
+    ).
+
+resultado(S1, soltar(X), S2) :-
+    %Robot ya no tiene la caja en la pinza y su localización no cambia
+    remplazar_variable(S1, pinza(X), pinza(vacia), S2).
 
